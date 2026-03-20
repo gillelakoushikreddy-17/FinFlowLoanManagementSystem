@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.finflow</groupId>
+    <artifactId>finflow-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>finflow-parent</name>
+    <description>Parent POM for FinFlow Microservices</description>
+    <modules>
+        <module>service-registry</module>
+        <module>api-gateway</module>
+        <module>auth-service</module>
+        <module>application-service</module>
+        <module>document-service</module>
+        <module>admin-service</module>
+    </modules>
+</project>

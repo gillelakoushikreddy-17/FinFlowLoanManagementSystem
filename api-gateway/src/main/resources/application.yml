@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/gateway/auth/**
+          filters:
+            - RewritePath=/gateway/auth/(?<segment>.*), /${segment}
+        - id: application-service
+          uri: lb://application-service
+          predicates:
+            - Path=/gateway/applications/**
+          filters:
+            - RewritePath=/gateway/applications/(?<segment>.*), /${segment}
+        - id: document-service
+          uri: lb://document-service
+          predicates:
+            - Path=/gateway/documents/**
+          filters:
+            - RewritePath=/gateway/documents/(?<segment>.*), /${segment}
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/gateway/admin/**
+          filters:
+            - RewritePath=/gateway/admin/(?<segment>.*), /${segment}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
