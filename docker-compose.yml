@@ -1,19 +1,113 @@
 version: '3.8'
 
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: finflow-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: tiger
-      # Databases will be created automatically via JDBC connection strings if createDatabaseIfNotExist=true is used,
-      # but we can optionally define a starting DB here.
-      MYSQL_DATABASE: finflow_auth
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    restart: unless-stopped
+# ─────────────────────────────────────────────────────────────────────────────
+# FinFlow Microservices – Spring Boot services only.
+# Assumes MySQL, RabbitMQ and Zipkin are already running in Docker on the
+# "finflow-net" network (see Step-by-Step instructions below if they are not).
+# ─────────────────────────────────────────────────────────────────────────────
 
+services:
+
+  # ── 1. Eureka Service Registry ──────────────────────────────────────────────
+  service-registry:
+    build: ./service-registry
+    container_name: finflow-registry
+    ports:
+      - "8761:8761"
+    environment:
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+    networks:
+      - finflow-net
+    restart: on-failure
+
+  # ── 2. API Gateway ───────────────────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: finflow-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_URI=http://service-registry:8761/eureka/
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+    depends_on:
+      - service-registry
+    networks:
+      - finflow-net
+    restart: on-failure
+
+  # ── 3. Auth Service ──────────────────────────────────────────────────────────
+  auth-service:
+    build: ./auth-service
+    container_name: finflow-auth
+    environment:
+      - DB_HOST=finflow-mysql
+      - EUREKA_URI=http://service-registry:8761/eureka/
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+    depends_on:
+      - service-registry
+    networks:
+      - finflow-net
+    restart: on-failure
+
+  # ── 4. Application Service ───────────────────────────────────────────────────
+  application-service:
+    build: ./application-service
+    container_name: finflow-application
+    environment:
+      - DB_HOST=finflow-mysql
+      - RABBIT_HOST=finflow-rabbitmq
+      - EUREKA_URI=http://service-registry:8761/eureka/
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+    depends_on:
+      - service-registry
+    networks:
+      - finflow-net
+    restart: on-failure
+
+  # ── 5. Document Service ──────────────────────────────────────────────────────
+  document-service:
+    build: ./document-service
+    container_name: finflow-document
+    environment:
+      - DB_HOST=finflow-mysql
+      - EUREKA_URI=http://service-registry:8761/eureka/
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+      - UPLOAD_DIR=/app/uploads/
+    volumes:
+      - finflow-uploads:/app/uploads
+    depends_on:
+      - service-registry
+    networks:
+      - finflow-net
+    restart: on-failure
+
+  # ── 6. Admin Service ─────────────────────────────────────────────────────────
+  admin-service:
+    build: ./admin-service
+    container_name: finflow-admin
+    environment:
+      - DB_HOST=finflow-mysql
+      - RABBIT_HOST=finflow-rabbitmq
+      - EUREKA_URI=http://service-registry:8761/eureka/
+      - ZIPKIN_URI=http://finflow-zipkin:9411/api/v2/spans
+    depends_on:
+      - service-registry
+    networks:
+      - finflow-net
+    restart: on-failure
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared network – must be created externally (see instructions).
+# All your existing containers (MySQL, RabbitMQ, Zipkin) must be on this same
+# network so they are reachable by the service container names above.
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  finflow-net:
+    external: true
+    name: finflowloanmanagementsystem_finflow-net
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Named volume – uploaded documents persist even if the container is recreated.
+# ─────────────────────────────────────────────────────────────────────────────
 volumes:
-  mysql_data:
+  finflow-uploads:

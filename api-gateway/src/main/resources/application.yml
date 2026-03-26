@@ -23,26 +23,68 @@ spring:
             - Path=/gateway/auth/**
           filters:
             - RewritePath=/gateway/auth/(?<segment>.*), /${segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /gateway/auth
+            - name: CircuitBreaker
+              args:
+                name: authServiceCB
+                fallbackUri: forward:/fallback
         - id: application-service
           uri: lb://application-service
           predicates:
             - Path=/gateway/applications/**
           filters:
             - RewritePath=/gateway/applications/(?<segment>.*), /${segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /gateway/applications
+            - name: CircuitBreaker
+              args:
+                name: applicationServiceCB
+                fallbackUri: forward:/fallback
         - id: document-service
           uri: lb://document-service
           predicates:
             - Path=/gateway/documents/**
           filters:
             - RewritePath=/gateway/documents/(?<segment>.*), /${segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /gateway/documents
+            - name: CircuitBreaker
+              args:
+                name: documentServiceCB
+                fallbackUri: forward:/fallback
         - id: admin-service
           uri: lb://admin-service
           predicates:
             - Path=/gateway/admin/**
           filters:
             - RewritePath=/gateway/admin/(?<segment>.*), /${segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /gateway/admin
+            - name: CircuitBreaker
+              args:
+                name: adminServiceCB
+                fallbackUri: forward:/fallback
 
 eureka:
+  instance:
+    prefer-ip-address: true
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: Auth Service
+        url: /gateway/auth/v3/api-docs
+      - name: Application Service
+        url: /gateway/applications/v3/api-docs
+      - name: Document Service
+        url: /gateway/documents/v3/api-docs
+      - name: Admin Service
+        url: /gateway/admin/v3/api-docs
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URI:http://localhost:9411/api/v2/spans}
